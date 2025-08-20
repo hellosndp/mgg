@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Movie Guessing Game</title>
+  <style>
+    body { 
+        font-family: Arial, sans-serif; padding: 20px; text-align: center; 
+    }
+    h1 { margin-bottom: 20px; }
+    #timer { font-weight: bold; margin-bottom: 18px; color: red;}
+    #score { font-weight: bold; margin-bottom: 15px; color: green; }
+    #plot { margin: 15px 0; }
+    #guess-container { position: relative; display: inline-block; }
+    #guess { width: 300px; padding: 5px; }
+    #suggestions {
+      border: 1px solid #ccc; max-height: 120px; overflow-y: auto;
+      position: absolute; top: 30px; width: 300px; background: white; display: none;
+      z-index: 10; text-align: left;
+    }
+    #suggestions div { padding: 5px; cursor: pointer; }
+    #suggestions div:hover, #suggestions .selected { background: #eee; }
+    #result { margin-top: 10px; font-weight: bold; }
+    #poster { margin-top: 15px; max-width: 200px; display: none; }
+    #nextBtn, #restartBtn { margin-top: 15px; padding: 8px 15px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>🎬 Movie Guess Game</h1>
+
+  <div id="timer">Time left: 60s</div>
+  <div id="score">Score: 0</div>
+  <div><strong>Year:</strong> <span id="year"></span></div>
+  <div id="plot"><strong>Plot:</strong> <span id="plot-text"></span></div>
+
+  <div id="guess-container">
+    <input type="text" id="guess" placeholder="Type your guess...">
+    <div id="suggestions"></div>
+  </div>
+
+  <div id="result"></div>
+  <img id="poster">
+  <br>
+  <button id="nextBtn" style="display:none;">Next Guess</button>
+  <button id="restartBtn" style="display:none;">Start Again</button>
+
+  <script>
+    let movies = [
+      { title: "Inception", year: 2010, plot: "A skilled thief enters dreams to steal secrets.", poster: "https://m.media-amazon.com/images/I/51oDkz05BLL._AC_.jpg" },
+      { title: "The Matrix", year: 1999, plot: "A hacker discovers reality is a simulation.", poster: "https://m.media-amazon.com/images/I/51EG732BV3L.jpg" },
+      { title: "Interstellar", year: 2014, plot: "Astronauts travel through a wormhole to save humanity.", poster: "https://m.media-amazon.com/images/I/71yAzK+6ROL._AC_SY679_.jpg" },
+      { title: "Gladiator", year: 2000, plot: "A betrayed Roman general seeks revenge.", poster: "https://www.imdb.com/title/tt0172495/mediaviewer/rm2442542592/?ref_=tt_ov_i" }
+    ];
+
+    let currentMovie, timer, timeLeft, selectedIndex = -1, score = 0;
+    let remainingMovies = [];
+
+
+    function startGame() {
+      score = 0;
+  updateScore();
+  document.getElementById("restartBtn").style.display = "none";
+
+  // reset pool (shuffled copy of movies)
+  remainingMovies = [...movies].sort(() => Math.random() - 0.5);
+
+  loadMovie();
+  startTimer();
+    }
+
+    function loadMovie() {
+  if (remainingMovies.length === 0) {
+    document.getElementById("year").textContent = "";
+    document.getElementById("plot-text").textContent = "";
+    document.getElementById("guess").disabled = true;
+    document.getElementById("nextBtn").style.display = "none";
+    document.getElementById("result").textContent = "🎉 You completed all the guesses!";
+    document.getElementById("restartBtn").style.display = "inline-block";
+    clearInterval(timer);
+    stopTimer();
+    return;
+  }
+
+  currentMovie = remainingMovies.shift(); // take next movie in sequence
+  document.getElementById("year").textContent = currentMovie.year;
+  document.getElementById("plot-text").textContent = currentMovie.plot;
+  document.getElementById("guess").value = "";
+  document.getElementById("result").textContent = "";
+  document.getElementById("poster").style.display = "none";
+  document.getElementById("nextBtn").style.display = "none";
+  document.getElementById("guess").disabled = false;
+  selectedIndex = -1;
+}
+
+
+    function startTimer() {
+      timeLeft = 60;
+      document.getElementById("timer").textContent = `Time left: ${timeLeft}s`;
+      clearInterval(timer);
+      timer = setInterval(() => {
+        timeLeft--;
+        document.getElementById("timer").textContent = `Time left: ${timeLeft}s`;
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          document.getElementById("timer").textContent = "Time's up!";
+          document.getElementById("guess").disabled = true;
+          document.getElementById("restartBtn").style.display = "inline-block";
+        }
+      }, 1000);
+    }
+    function stopTimer() {
+  clearInterval(timerInterval);
+  document.getElementById("timer").textContent = ""; // hide the timer when done
+}
+
+    document.getElementById("guess").addEventListener("input", function() {
+      const input = this.value.toLowerCase();
+      const suggestions = movies.filter(m => m.title.toLowerCase().includes(input));
+      const suggestionBox = document.getElementById("suggestions");
+      suggestionBox.innerHTML = "";
+      selectedIndex = -1;
+
+      if (input.length >= 3 && suggestions.length > 0) {
+        suggestionBox.style.display = "block";
+        suggestions.forEach(s => {
+          const div = document.createElement("div");
+          div.textContent = s.title;
+          div.onclick = () => selectMovie(s.title);
+          suggestionBox.appendChild(div);
+        });
+      } else {
+        suggestionBox.style.display = "none";
+      }
+    });
+
+    document.getElementById("guess").addEventListener("keydown", function(e) {
+      const suggestionBox = document.getElementById("suggestions");
+      const items = suggestionBox.querySelectorAll("div");
+
+      if (e.key === "ArrowDown") {
+        if (selectedIndex < items.length - 1) selectedIndex++;
+      } else if (e.key === "ArrowUp") {
+        if (selectedIndex > 0) selectedIndex--;
+      } else if (e.key === "Enter") {
+        if (selectedIndex >= 0) {
+          selectMovie(items[selectedIndex].textContent);
+        } else {
+          checkGuess(this.value);
+        }
+        suggestionBox.style.display = "none";
+      }
+
+      items.forEach((item, idx) => {
+        item.classList.toggle("selected", idx === selectedIndex);
+      });
+    });
+
+    function selectMovie(title) {
+      document.getElementById("guess").value = title;
+      checkGuess(title);
+      document.getElementById("suggestions").style.display = "none";
+    }
+
+    function checkGuess(guess) {
+      const resultDiv = document.getElementById("result");
+      if (guess.toLowerCase() === currentMovie.title.toLowerCase()) {
+        resultDiv.textContent = "✅ Correct!";
+        document.getElementById("poster").src = currentMovie.poster;
+        document.getElementById("poster").style.display = "block";
+        document.getElementById("nextBtn").style.display = "inline-block";
+        clearInterval(timer);
+
+        if (timeLeft > 0) {
+          score++;
+          updateScore();
+        }
+      } else {
+        resultDiv.textContent = "❌ Wrong guess. Try again!";
+      }
+    }
+
+    function updateScore() {
+      document.getElementById("score").textContent = `Score: ${score}`;
+    }
+
+    document.getElementById("nextBtn").addEventListener("click", () => {
+      loadMovie();
+      startTimer();
+    });
+    
+    
+    
+
+    document.getElementById("restartBtn").addEventListener("click", () => {
+      startGame();
+    });
+    
+
+    // Start game initially
+    startGame();
+  </script>
+</body>
+</html>
