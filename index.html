@@ -144,6 +144,11 @@
         if (selectedIndex > 0) selectedIndex--;
       } else if (e.key === "Enter") {
         if (selectedIndex >= 0) {
+            if(document.getElementById("nextBtn").style.display != "none")
+            {
+                loadMovie();
+                startTimer();
+            }
           selectMovie(items[selectedIndex].textContent);
         } else {
           checkGuess(this.value);
